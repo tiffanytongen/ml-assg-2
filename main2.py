@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 
 TASK_NAME = "task2"
 TASK_FOLDER = "data/task2_data"
-OUTPUT_FOLDER = "outputs"
+OUTPUT_FOLDER = "submissions"
 
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(os.path.join(OUTPUT_FOLDER, "figures"), exist_ok=True)
