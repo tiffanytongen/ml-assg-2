@@ -1,0 +1,6 @@
+model,accuracy
+Random Forest,0.38095238095238093
+SVM,0.32142857142857145
+Voting Ensemble,0.27380952380952384
+Logistic Regression,0.25
+kNN,0.11904761904761904
