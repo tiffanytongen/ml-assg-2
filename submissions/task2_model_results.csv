@@ -1,0 +1,5 @@
+model,validation_accuracy
+SVM RBF,0.8571428571428571
+Logistic Regression,0.8452380952380952
+Voting Ensemble,0.8452380952380952
+Random Forest,0.8214285714285714
