@@ -1,8 +1,0 @@
-model,validation_accuracy
-Linear SVM C=0.1,0.5666666666666667
-Logistic Regression C=1,0.5586666666666666
-Linear SVM C=1,0.5573333333333333
-RBF SVM,0.556
-Logistic Regression C=3,0.54
-Random Forest,0.516
-Extra Trees,0.5053333333333333
