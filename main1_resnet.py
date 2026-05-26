@@ -3,6 +3,8 @@ import pandas as pd
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, classification_report
 
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
@@ -93,6 +95,48 @@ val_preds = model.predict(X_val)
 acc = accuracy_score(y_val, val_preds)
 
 print("ResNet feature validation accuracy:", acc)
+print("\nClassification report:")
+print(classification_report(y_val, val_preds))
+
+# ============================================================
+# Save confusion matrix diagram
+# ============================================================
+
+class_names = [
+    "bird", "butterfly", "cat", "deer", "dog",
+    "elephant", "frog", "horse", "sheep", "spider"
+]
+
+os.makedirs("submissions/figures", exist_ok=True)
+
+cm = confusion_matrix(y_val, val_preds)
+
+fig, ax = plt.subplots(figsize=(8, 8))
+
+disp = ConfusionMatrixDisplay(
+    confusion_matrix=cm,
+    display_labels=class_names
+)
+
+disp.plot(
+    cmap="Blues",
+    ax=ax,
+    xticks_rotation=45,
+    colorbar=False
+)
+
+plt.title("Task 1 ResNet + Logistic Regression Confusion Matrix")
+plt.tight_layout()
+
+plt.savefig(
+    "submissions/figures/task1_resnet_confusion_matrix.png",
+    dpi=300,
+    bbox_inches="tight"
+)
+
+plt.close()
+
+print("Saved confusion matrix to submissions/figures/task1_resnet_confusion_matrix.png")
 
 model.fit(X_img, y)
 
