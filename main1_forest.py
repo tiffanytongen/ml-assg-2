@@ -1,15 +1,13 @@
 import os
 import pandas as pd
 
-from sklearn.model_selection import train_test_split, GridSearchCV
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import StandardScaler
 
 
 # ============================================================
-# TASK 1: kNN MODEL
+# TASK 1: RANDOM FOREST MODEL
 # ============================================================
 
 DATA_DIR = "data/task1_data"
@@ -64,67 +62,41 @@ X_train, X_val, y_train, y_val = train_test_split(
 
 
 # ============================================================
-# 5. Build kNN pipeline
+# 5. Train Random Forest
 # ============================================================
 
-knn_pipeline = Pipeline([
-    ("scaler", StandardScaler()),
-    ("model", KNeighborsClassifier())
-])
-
-
-# ============================================================
-# 6. Grid search for best kNN parameters
-# ============================================================
-
-param_grid = {
-    "model__n_neighbors": [3, 5, 7, 9, 11, 15],
-    "model__weights": ["uniform", "distance"],
-    "model__metric": ["euclidean", "manhattan"]
-}
-
-grid = GridSearchCV(
-    knn_pipeline,
-    param_grid,
-    cv=5,
-    scoring="accuracy",
-    n_jobs=-1,
-    verbose=2
+rf_model = RandomForestClassifier(
+    n_estimators=500,
+    random_state=42,
+    n_jobs=-1
 )
 
-print("\nTraining kNN model with GridSearchCV...")
+print("\nTraining Random Forest model...")
 
-grid.fit(X_train, y_train)
+rf_model.fit(X_train, y_train)
 
-
-# ============================================================
-# 7. Evaluate best kNN model on validation data
-# ============================================================
-
-best_knn = grid.best_estimator_
-
-knn_preds = best_knn.predict(X_val)
-knn_acc = accuracy_score(y_val, knn_preds)
+rf_preds = rf_model.predict(X_val)
+rf_acc = accuracy_score(y_val, rf_preds)
 
 
 # ============================================================
-# 8. Retrain best kNN model on all training data
+# 6. Retrain Random Forest on all training data
 # ============================================================
 
-print("\nTraining final kNN model on all training data...")
+print("\nTraining final Random Forest model on all training data...")
 
-best_knn.fit(X, y)
-
-
-# ============================================================
-# 9. Predict test data
-# ============================================================
-
-test_preds = best_knn.predict(X_test)
+rf_model.fit(X, y)
 
 
 # ============================================================
-# 10. Save submission
+# 7. Predict test data
+# ============================================================
+
+test_preds = rf_model.predict(X_test)
+
+
+# ============================================================
+# 8. Save submission
 # ============================================================
 
 submission = pd.DataFrame({
@@ -132,33 +104,32 @@ submission = pd.DataFrame({
     "class_id": test_preds
 })
 
-submission_name = f"{SUBMISSION_DIR}/task1_knn_submission.csv"
+submission_name = f"{SUBMISSION_DIR}/task1_random_forest_submission.csv"
 
 submission.to_csv(submission_name, index=False)
 
 
 # ============================================================
-# 11. Print consistent output
+# 9. Print consistent output
 # ============================================================
 
 print("\n" + "=" * 60)
-print("MODEL: kNN")
+print("MODEL: Random Forest")
 print("=" * 60)
 
 print("\nModel details:")
-print("best parameters:", grid.best_params_)
-print("best CV accuracy:", grid.best_score_)
+print("n_estimators: 500")
+print("random_state: 42")
 print("features used: color + HOG + additional")
-print("scaling: StandardScaler")
 
 print("\nValidation accuracy:")
-print(knn_acc)
+print(rf_acc)
 
 print("\nClassification report:")
-print(classification_report(y_val, knn_preds))
+print(classification_report(y_val, rf_preds))
 
 print("\nConfusion matrix:")
-print(confusion_matrix(y_val, knn_preds))
+print(confusion_matrix(y_val, rf_preds))
 
 print("\nSubmission preview:")
 print(submission.head())

@@ -2,8 +2,8 @@ import os
 import warnings
 import pandas as pd
 import numpy as np
-from PIL import Image
 
+from PIL import Image
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
@@ -14,70 +14,46 @@ warnings.filterwarnings("ignore")
 
 
 # ============================================================
-# TASK 1: COARSE-GRAINED ANIMAL CLASSIFICATION
-# Method: Linear SVM with engineered image features
+# TASK 1: LINEAR SVM MODEL
 # ============================================================
 
-DATA_FOLDER = "data/task1_data"
-SUBMISSION_FOLDER = "submissions"
+DATA_DIR = "data/task1_data"
+SUBMISSION_DIR = "submissions"
 
-os.makedirs(SUBMISSION_FOLDER, exist_ok=True)
+os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
 
 # ============================================================
-# 1. Load CSV files
+# 1. Load data
 # ============================================================
 
-train_meta = pd.read_csv(os.path.join(DATA_FOLDER, "train_metadata.csv"))
-test_meta = pd.read_csv(os.path.join(DATA_FOLDER, "test_metadata.csv"))
+train_meta = pd.read_csv(f"{DATA_DIR}/train_metadata.csv")
+test_meta = pd.read_csv(f"{DATA_DIR}/test_metadata.csv")
 
-color = pd.read_csv(os.path.join(DATA_FOLDER, "color_histogram.csv"))
-hog = pd.read_csv(os.path.join(DATA_FOLDER, "hog_pca.csv"))
-additional = pd.read_csv(os.path.join(DATA_FOLDER, "additional_features.csv"))
-
-print("Train metadata shape:", train_meta.shape)
-print("Test metadata shape:", test_meta.shape)
-print("Color shape:", color.shape)
-print("HOG shape:", hog.shape)
-print("Additional features shape:", additional.shape)
+color = pd.read_csv(f"{DATA_DIR}/color_histogram.csv")
+hog = pd.read_csv(f"{DATA_DIR}/hog_pca.csv")
+additional = pd.read_csv(f"{DATA_DIR}/additional_features.csv")
 
 
 # ============================================================
 # 2. Merge provided features
 # ============================================================
 
-features = color.merge(hog, on="image_id")
-features = features.merge(additional, on="image_id")
+features = color.merge(hog, on="image_id").merge(additional, on="image_id")
 
 train_data = train_meta.merge(features, on="image_id")
 test_data = test_meta.merge(features, on="image_id")
-
-print("Train data shape after merge:", train_data.shape)
-print("Test data shape after merge:", test_data.shape)
 
 
 # ============================================================
 # 3. Extract extra image features
 # ============================================================
 
-def extract_image_features(metadata, data_folder):
-    """
-    Extract extra features directly from the raw images.
-
-    Features:
-    - mean RGB
-    - RGB standard deviation
-    - RGB min/max
-    - centre crop colour statistics
-    - brightness statistics
-    - simple edge strength
-    - small resized raw pixel features
-    """
-
+def extract_image_features(metadata, data_dir):
     all_features = []
 
     for image_path in metadata["image_path"]:
-        full_path = os.path.join(data_folder, image_path)
+        full_path = os.path.join(data_dir, image_path)
 
         img = Image.open(full_path).convert("RGB")
         img = img.resize((64, 64))
@@ -109,7 +85,7 @@ def extract_image_features(metadata, data_folder):
         horizontal_edges = np.abs(np.diff(gray, axis=1)).mean()
         edge_features = np.array([vertical_edges, horizontal_edges])
 
-        # Small raw pixel features
+        # Small resized raw pixel features
         small_img = img.resize((8, 8))
         small_pixels = np.asarray(small_img).astype(np.float32).flatten() / 255.0
 
@@ -132,8 +108,8 @@ def extract_image_features(metadata, data_folder):
 
 print("\nExtracting extra image features...")
 
-train_image_features = extract_image_features(train_meta, DATA_FOLDER)
-test_image_features = extract_image_features(test_meta, DATA_FOLDER)
+train_image_features = extract_image_features(train_meta, DATA_DIR)
+test_image_features = extract_image_features(test_meta, DATA_DIR)
 
 train_image_features.columns = [
     f"img_feat_{i}" for i in range(train_image_features.shape[1])
@@ -143,12 +119,9 @@ test_image_features.columns = [
     f"img_feat_{i}" for i in range(test_image_features.shape[1])
 ]
 
-print("Extra train image features shape:", train_image_features.shape)
-print("Extra test image features shape:", test_image_features.shape)
-
 
 # ============================================================
-# 4. Prepare training and test data
+# 4. Prepare X and y
 # ============================================================
 
 X_provided = train_data.drop(
@@ -177,11 +150,6 @@ X_test = pd.concat(
 
 y = train_data["class_id"]
 
-print("\nFinal X shape:", X.shape)
-print("Final X_test shape:", X_test.shape)
-print("\nLabel counts:")
-print(y.value_counts().sort_index())
-
 
 # ============================================================
 # 5. Train-validation split
@@ -197,7 +165,7 @@ X_train, X_val, y_train, y_val = train_test_split(
 
 
 # ============================================================
-# 6. Build one model: Linear SVM
+# 6. Build Linear SVM model
 # ============================================================
 
 model = Pipeline([
@@ -207,7 +175,7 @@ model = Pipeline([
 
 
 # ============================================================
-# 7. Train and evaluate
+# 7. Train and evaluate validation data
 # ============================================================
 
 print("\nTraining Linear SVM model...")
@@ -215,19 +183,11 @@ print("\nTraining Linear SVM model...")
 model.fit(X_train, y_train)
 
 val_preds = model.predict(X_val)
-
 accuracy = accuracy_score(y_val, val_preds)
-
-print("\nValidation accuracy:", accuracy)
-print("\nClassification report:")
-print(classification_report(y_val, val_preds))
-
-print("\nConfusion matrix:")
-print(confusion_matrix(y_val, val_preds))
 
 
 # ============================================================
-# 8. Train final model on all labelled training data
+# 8. Retrain Linear SVM on all training data
 # ============================================================
 
 print("\nTraining final Linear SVM model on all training data...")
@@ -244,13 +204,11 @@ final_model.fit(X, y)
 # 9. Predict test data
 # ============================================================
 
-print("\nPredicting test labels...")
-
 test_preds = final_model.predict(X_test)
 
 
 # ============================================================
-# 10. Save Kaggle submission
+# 10. Save submission
 # ============================================================
 
 submission = pd.DataFrame({
@@ -258,14 +216,45 @@ submission = pd.DataFrame({
     "class_id": test_preds
 })
 
-submission_path = os.path.join(
-    SUBMISSION_FOLDER,
-    "task1_linear_svm_submission.csv"
-)
+submission_path = f"{SUBMISSION_DIR}/task1_linear_svm_submission.csv"
 
 submission.to_csv(submission_path, index=False)
+
+
+# ============================================================
+# 11. Print consistent output
+# ============================================================
+
+print("\n" + "=" * 60)
+print("MODEL: Linear SVM")
+print("=" * 60)
+
+print("\nModel details:")
+print("C: 0.1")
+print("max_iter: 8000")
+print("random_state: 42")
+print("features used: color + HOG + additional + extra image features")
+print("scaling: StandardScaler")
+
+print("\nData summary:")
+print("Final X shape:", X.shape)
+print("Final X_test shape:", X_test.shape)
+print("\nLabel counts:")
+print(y.value_counts().sort_index())
+
+print("\nValidation accuracy:")
+print(accuracy)
+
+print("\nClassification report:")
+print(classification_report(y_val, val_preds))
+
+print("\nConfusion matrix:")
+print(confusion_matrix(y_val, val_preds))
 
 print("\nSubmission preview:")
 print(submission.head())
 
-print("\nSaved submission to:", submission_path)
+print("\nSaved submission to:")
+print(submission_path)
+
+print("=" * 60)
