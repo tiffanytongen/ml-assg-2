@@ -3,6 +3,8 @@ import pandas as pd
 import torch
 import torchvision.models as models
 import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix, classification_report
 
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
@@ -140,12 +142,7 @@ model.fit(X_train, y_train)
 val_preds = model.predict(X_val)
 acc = accuracy_score(y_val, val_preds)
 
-
-# ============================================================
-# 9. Retrain model on all training data
-# ============================================================
-
-print("\nTraining final ResNet feature model on all training data...")
+print("ResNet feature validation accuracy:", acc)
 
 model.fit(X_img, y)
 
