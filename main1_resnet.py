@@ -15,28 +15,18 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 
 
-# ============================================================
-# TASK 1: RESNET18 FEATURE MODEL
-# ============================================================
+#  RESNET feature model method
 
 DATA_DIR = "data/task1_data"
 SUBMISSION_DIR = "submissions"
-
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
-
-# ============================================================
-# 1. Load data
-# ============================================================
-
+# load data
 train_meta = pd.read_csv(f"{DATA_DIR}/train_metadata.csv")
 test_meta = pd.read_csv(f"{DATA_DIR}/test_metadata.csv")
 
 
-# ============================================================
-# 2. Create image dataset class
-# ============================================================
-
+# create image dataset class
 class ImageDataset(Dataset):
     def __init__(self, df, data_dir, transform):
         self.df = df
@@ -53,10 +43,7 @@ class ImageDataset(Dataset):
         return image
 
 
-# ============================================================
-# 3. Define image transforms
-# ============================================================
-
+# define image transforms
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -67,10 +54,7 @@ transform = transforms.Compose([
 ])
 
 
-# ============================================================
-# 4. Load pretrained ResNet18 feature extractor
-# ============================================================
-
+# load pretrained ResNet feature extractor
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
@@ -79,10 +63,7 @@ resnet = resnet.to(device)
 resnet.eval()
 
 
-# ============================================================
-# 5. Extract ResNet features
-# ============================================================
-
+# extract ResNet features
 def extract_features(df):
     dataset = ImageDataset(df, DATA_DIR, transform)
     loader = DataLoader(dataset, batch_size=32, shuffle=False)
@@ -98,20 +79,15 @@ def extract_features(df):
     return torch.cat(all_features).numpy()
 
 
-print("\nUsing device:", device)
-
-print("\nExtracting train image features...")
+print("\nextracting train image features")
 X_img = extract_features(train_meta)
 y = train_meta["class_id"]
 
-print("Extracting test image features...")
+print("\nextracting test image features")
 X_test_img = extract_features(test_meta)
 
 
-# ============================================================
-# 6. Train-validation split
-# ============================================================
-
+# train validation split
 X_train, X_val, y_train, y_val = train_test_split(
     X_img,
     y,
@@ -121,66 +97,42 @@ X_train, X_val, y_train, y_val = train_test_split(
 )
 
 
-# ============================================================
-# 7. Build Logistic Regression model
-# ============================================================
-
+# build Logistic Regression model
 model = Pipeline([
     ("scaler", StandardScaler()),
     ("clf", LogisticRegression(max_iter=3000, C=10))
 ])
 
 
-# ============================================================
-# 8. Train and evaluate validation data
-# ============================================================
-
-print("\nTraining Logistic Regression on ResNet features...")
-
+# train and evaluate validation data
 model.fit(X_train, y_train)
-
 val_preds = model.predict(X_val)
 acc = accuracy_score(y_val, val_preds)
-
 print("ResNet feature validation accuracy:", acc)
-
 model.fit(X_img, y)
 
-
-# ============================================================
-# 10. Predict test data
-# ============================================================
-
+# predict test data
 test_preds = model.predict(X_test_img)
 
-
-# ============================================================
-# 11. Save submission
-# ============================================================
-
+# save
 submission = pd.DataFrame({
     "image_id": test_meta["image_id"],
     "class_id": test_preds
 })
 
-submission_path = f"{SUBMISSION_DIR}/task1_resnet_submission.csv"
+submission_path = f"{SUBMISSION_DIR}/task1_resnet.csv"
 
 submission.to_csv(submission_path, index=False)
 
 
-# ============================================================
-# 12. Print consistent output
-# ============================================================
-
-print("\n" + "=" * 60)
+# output
+print("\n")
 print("MODEL: ResNet18 + Logistic Regression")
-print("=" * 60)
+
 
 print("\nModel details:")
 print("feature extractor: pretrained ResNet18")
 print("classifier: LogisticRegression")
-print("C: 10")
-print("max_iter: 3000")
 print("scaling: StandardScaler")
 print("features used: ResNet18 image embeddings")
 
@@ -203,8 +155,4 @@ print(confusion_matrix(y_val, val_preds))
 
 print("\nSubmission preview:")
 print(submission.head())
-
-print("\nSaved submission to:")
-print(submission_path)
-
-print("=" * 60)
+print("\n")

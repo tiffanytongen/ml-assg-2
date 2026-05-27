@@ -21,14 +21,12 @@ from sklearn.ensemble import RandomForestClassifier, VotingClassifier
 warnings.filterwarnings("ignore")
 
 
-# ============================================================
-# TASK 2: FINE-GRAINED BIRD SPECIES CLASSIFICATION
+
 # Models:
 # 1. Logistic Regression
 # 2. SVM RBF
 # 3. Random Forest
 # 4. Voting Ensemble
-# ============================================================
 
 DATA_DIR = "data/task2_data"
 SUBMISSION_DIR = "submissions"
@@ -36,48 +34,28 @@ SUBMISSION_DIR = "submissions"
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
 
-# ============================================================
-# 1. Load metadata
-# ============================================================
-
+# load data
 train_meta = pd.read_csv(f"{DATA_DIR}/train_metadata.csv")
 test_meta = pd.read_csv(f"{DATA_DIR}/test_metadata.csv")
-
 y = train_meta["class_id"]
 
-print("Train metadata shape:", train_meta.shape)
-print("Test metadata shape:", test_meta.shape)
 
-
-# ============================================================
-# 2. Load provided features
-# ============================================================
-
+# load provided features
 color = pd.read_csv(f"{DATA_DIR}/color_histogram.csv")
 hog = pd.read_csv(f"{DATA_DIR}/hog_pca.csv")
 additional = pd.read_csv(f"{DATA_DIR}/additional_features.csv")
-
 features = color.merge(hog, on="image_id").merge(additional, on="image_id")
-
 train_data = train_meta.merge(features, on="image_id")
 test_data = test_meta.merge(features, on="image_id")
-
 X_provided = train_data.drop(
     columns=["image_id", "image_path", "class_id", "class_name"]
 )
-
 X_test_provided = test_data.drop(
     columns=["image_id", "image_path"]
 )
 
-print("\nProvided train features shape:", X_provided.shape)
-print("Provided test features shape:", X_test_provided.shape)
 
-
-# ============================================================
-# 3. Create image dataset class
-# ============================================================
-
+# create image dataset class
 class ImageDataset(Dataset):
     def __init__(self, df, data_dir, transform):
         self.df = df.reset_index(drop=True)
@@ -94,10 +72,7 @@ class ImageDataset(Dataset):
         return image
 
 
-# ============================================================
-# 4. Define ResNet image transform
-# ============================================================
-
+# ResNet image transformation
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
     transforms.ToTensor(),
@@ -108,23 +83,15 @@ transform = transforms.Compose([
 ])
 
 
-# ============================================================
-# 5. Load pretrained ResNet18 feature extractor
-# ============================================================
-
+# load ResNet feature extractor
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("\nUsing device:", device)
-
 resnet = models.resnet18(weights=models.ResNet18_Weights.IMAGENET1K_V1)
 resnet.fc = torch.nn.Identity()
 resnet = resnet.to(device)
 resnet.eval()
 
 
-# ============================================================
-# 6. Extract ResNet features
-# ============================================================
-
+# extract ResNet features
 def extract_resnet_features(df, batch_size=32):
     dataset = ImageDataset(df, DATA_DIR, transform)
     loader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
@@ -140,10 +107,10 @@ def extract_resnet_features(df, batch_size=32):
     return np.vstack(all_features)
 
 
-print("\nExtracting ResNet train features...")
+print("\nExtracting ResNet train features")
 X_resnet = extract_resnet_features(train_meta)
 
-print("Extracting ResNet test features...")
+print("Extracting ResNet test features")
 X_test_resnet = extract_resnet_features(test_meta)
 
 X_resnet = pd.DataFrame(
@@ -156,14 +123,9 @@ X_test_resnet = pd.DataFrame(
     columns=[f"resnet_{i}" for i in range(X_test_resnet.shape[1])]
 )
 
-print("\nResNet train features shape:", X_resnet.shape)
-print("ResNet test features shape:", X_test_resnet.shape)
 
 
-# ============================================================
-# 7. Combine provided features and ResNet features
-# ============================================================
-
+# combine provided features and ResNet features
 X = pd.concat(
     [
         X_provided.reset_index(drop=True),
@@ -171,7 +133,6 @@ X = pd.concat(
     ],
     axis=1
 )
-
 X_test = pd.concat(
     [
         X_test_provided.reset_index(drop=True),
@@ -180,21 +141,15 @@ X_test = pd.concat(
     axis=1
 )
 
-# Rename columns to avoid duplicate feature names
+# rename columns to avoid duplicate feature names
 X.columns = [f"f{i}" for i in range(X.shape[1])]
 X_test.columns = [f"f{i}" for i in range(X_test.shape[1])]
-
-print("\nFinal X shape:", X.shape)
-print("Final X_test shape:", X_test.shape)
 
 print("\nLabel counts:")
 print(y.value_counts().sort_index())
 
 
-# ============================================================
-# 8. Train-validation split
-# ============================================================
-
+# train validation split
 X_train, X_val, y_train, y_val = train_test_split(
     X,
     y,
@@ -204,10 +159,7 @@ X_train, X_val, y_train, y_val = train_test_split(
 )
 
 
-# ============================================================
-# 9. Define four models
-# ============================================================
-
+# define each model
 logistic_model = Pipeline([
     ("scaler", StandardScaler()),
     ("model", LogisticRegression(
@@ -256,10 +208,7 @@ models_to_try = {
 }
 
 
-# ============================================================
-# 10. Train and evaluate models
-# ============================================================
-
+# train and evaluate each model
 results = []
 best_model = None
 best_model_name = None
@@ -267,11 +216,9 @@ best_accuracy = -1
 best_val_preds = None
 
 for model_name, model in models_to_try.items():
-    print("\n" + "=" * 60)
+    print("\n")
     print(f"MODEL: {model_name}")
-    print("=" * 60)
 
-    print("\nTraining model...")
     model.fit(X_train, y_train)
 
     val_preds = model.predict(X_val)
@@ -285,6 +232,9 @@ for model_name, model in models_to_try.items():
 
     print("\nConfusion matrix:")
     print(confusion_matrix(y_val, val_preds))
+    print("\n")
+    print("\n")
+    print("\n")
 
     results.append({
         "model": model_name,
@@ -298,10 +248,7 @@ for model_name, model in models_to_try.items():
         best_val_preds = val_preds
 
 
-# ============================================================
-# 11. Save result summary
-# ============================================================
-
+# save result
 results_df = pd.DataFrame(results).sort_values(
     by="validation_accuracy",
     ascending=False
@@ -310,61 +257,40 @@ results_df = pd.DataFrame(results).sort_values(
 results_path = f"{SUBMISSION_DIR}/task2_model_results.csv"
 results_df.to_csv(results_path, index=False)
 
-print("\n" + "=" * 60)
+print("\n")
 print("RESULT SUMMARY")
-print("=" * 60)
-
 print(results_df)
 
-print("\nSaved results to:")
-print(results_path)
 
 print("\nBest model:")
 print(best_model_name)
 
 print("\nBest validation accuracy:")
 print(best_accuracy)
+print("\n")
 
 
-# ============================================================
-# 12. Retrain best model on all labelled training data
-# ============================================================
-
-print("\nTraining best model on all Task 2 training data...")
-
+# retrain best model on all labelled training data
 best_model.fit(X, y)
 
 
-# ============================================================
-# 13. Predict test data
-# ============================================================
-
-print("\nPredicting Task 2 test labels...")
-
+# predict test data
 test_preds = best_model.predict(X_test)
 
 
-# ============================================================
-# 14. Save Kaggle submission
-# ============================================================
-
+# save for submission
 submission = pd.DataFrame({
     "image_id": test_meta["image_id"],
-    "label": test_preds
+    "class_id": test_preds
 })
 
 submission_path = f"{SUBMISSION_DIR}/task2_submission.csv"
-
 submission.to_csv(submission_path, index=False)
 
 
-# ============================================================
-# 15. Final clean output
-# ============================================================
-
-print("\n" + "=" * 60)
+# output
+print("\n")
 print("FINAL TASK 2 MODEL")
-print("=" * 60)
 
 print("\nBest selected model:")
 print(best_model_name)
@@ -384,4 +310,4 @@ print(submission.head())
 print("\nSaved submission to:")
 print(submission_path)
 
-print("=" * 60)
+print("\n")

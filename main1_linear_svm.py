@@ -12,43 +12,29 @@ from sklearn.metrics import accuracy_score, classification_report, confusion_mat
 
 warnings.filterwarnings("ignore")
 
-
-# ============================================================
-# TASK 1: LINEAR SVM MODEL
-# ============================================================
+# linear svm method
 
 DATA_DIR = "data/task1_data"
 SUBMISSION_DIR = "submissions"
-
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
 
-# ============================================================
-# 1. Load data
-# ============================================================
-
+# load data
 train_meta = pd.read_csv(f"{DATA_DIR}/train_metadata.csv")
 test_meta = pd.read_csv(f"{DATA_DIR}/test_metadata.csv")
-
 color = pd.read_csv(f"{DATA_DIR}/color_histogram.csv")
 hog = pd.read_csv(f"{DATA_DIR}/hog_pca.csv")
 additional = pd.read_csv(f"{DATA_DIR}/additional_features.csv")
 
 
-# ============================================================
-# 2. Merge provided features
-# ============================================================
 
+# merge feature
 features = color.merge(hog, on="image_id").merge(additional, on="image_id")
-
 train_data = train_meta.merge(features, on="image_id")
 test_data = test_meta.merge(features, on="image_id")
 
 
-# ============================================================
-# 3. Extract extra image features
-# ============================================================
-
+# extract extra image features
 def extract_image_features(metadata, data_dir):
     all_features = []
 
@@ -60,18 +46,18 @@ def extract_image_features(metadata, data_dir):
 
         arr = np.asarray(img).astype(np.float32) / 255.0
 
-        # RGB statistics
+        # RGB stats
         mean_rgb = arr.mean(axis=(0, 1))
         std_rgb = arr.std(axis=(0, 1))
         min_rgb = arr.min(axis=(0, 1))
         max_rgb = arr.max(axis=(0, 1))
 
-        # Centre crop statistics
+        # centre crop stats
         centre = arr[16:48, 16:48, :]
         centre_mean = centre.mean(axis=(0, 1))
         centre_std = centre.std(axis=(0, 1))
 
-        # Brightness statistics
+        # brightness stats
         gray = arr.mean(axis=2)
         brightness_features = np.array([
             gray.mean(),
@@ -80,12 +66,12 @@ def extract_image_features(metadata, data_dir):
             gray.max()
         ])
 
-        # Simple edge strength
+        # simple edge strength
         vertical_edges = np.abs(np.diff(gray, axis=0)).mean()
         horizontal_edges = np.abs(np.diff(gray, axis=1)).mean()
         edge_features = np.array([vertical_edges, horizontal_edges])
 
-        # Small resized raw pixel features
+        # resized raw pixel features
         small_img = img.resize((8, 8))
         small_pixels = np.asarray(small_img).astype(np.float32).flatten() / 255.0
 
@@ -106,7 +92,6 @@ def extract_image_features(metadata, data_dir):
     return pd.DataFrame(all_features)
 
 
-print("\nExtracting extra image features...")
 
 train_image_features = extract_image_features(train_meta, DATA_DIR)
 test_image_features = extract_image_features(test_meta, DATA_DIR)
@@ -120,18 +105,14 @@ test_image_features.columns = [
 ]
 
 
-# ============================================================
-# 4. Prepare X and y
-# ============================================================
 
+# get X and Y
 X_provided = train_data.drop(
     columns=["image_id", "image_path", "class_id", "class_name"]
 )
-
 X_test_provided = test_data.drop(
     columns=["image_id", "image_path"]
 )
-
 X = pd.concat(
     [
         X_provided.reset_index(drop=True),
@@ -139,7 +120,6 @@ X = pd.concat(
     ],
     axis=1
 )
-
 X_test = pd.concat(
     [
         X_test_provided.reset_index(drop=True),
@@ -147,14 +127,10 @@ X_test = pd.concat(
     ],
     axis=1
 )
-
 y = train_data["class_id"]
 
 
-# ============================================================
-# 5. Train-validation split
-# ============================================================
-
+# train validation split
 X_train, X_val, y_train, y_val = train_test_split(
     X,
     y,
@@ -164,34 +140,22 @@ X_train, X_val, y_train, y_val = train_test_split(
 )
 
 
-# ============================================================
-# 6. Build Linear SVM model
-# ============================================================
-
+# build Linear SVM model
 model = Pipeline([
     ("scaler", StandardScaler()),
     ("svm", LinearSVC(C=0.1, max_iter=8000, random_state=42))
 ])
 
 
-# ============================================================
-# 7. Train and evaluate validation data
-# ============================================================
-
-print("\nTraining Linear SVM model...")
-
+# train and evaluate validation data
 model.fit(X_train, y_train)
 
 val_preds = model.predict(X_val)
 accuracy = accuracy_score(y_val, val_preds)
 
 
-# ============================================================
-# 8. Retrain Linear SVM on all training data
-# ============================================================
 
-print("\nTraining final Linear SVM model on all training data...")
-
+# retrain Linear SVM on all training data
 final_model = Pipeline([
     ("scaler", StandardScaler()),
     ("svm", LinearSVC(C=0.1, max_iter=8000, random_state=42))
@@ -200,38 +164,24 @@ final_model = Pipeline([
 final_model.fit(X, y)
 
 
-# ============================================================
-# 9. Predict test data
-# ============================================================
 
+# predict test data
 test_preds = final_model.predict(X_test)
 
 
-# ============================================================
-# 10. Save submission
-# ============================================================
-
+# save
 submission = pd.DataFrame({
     "image_id": test_data["image_id"],
     "class_id": test_preds
 })
-
-submission_path = f"{SUBMISSION_DIR}/task1_linear_svm_submission.csv"
-
+submission_path = f"{SUBMISSION_DIR}/task1_linear_svm.csv"
 submission.to_csv(submission_path, index=False)
 
-
-# ============================================================
-# 11. Print consistent output
-# ============================================================
-
-print("\n" + "=" * 60)
+# output
+print("\n")
 print("MODEL: Linear SVM")
-print("=" * 60)
 
 print("\nModel details:")
-print("C: 0.1")
-print("max_iter: 8000")
 print("random_state: 42")
 print("features used: color + HOG + additional + extra image features")
 print("scaling: StandardScaler")
@@ -253,8 +203,4 @@ print(confusion_matrix(y_val, val_preds))
 
 print("\nSubmission preview:")
 print(submission.head())
-
-print("\nSaved submission to:")
-print(submission_path)
-
-print("=" * 60)
+print("\n")

@@ -8,52 +8,35 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 
 
-# ============================================================
-# TASK 1: kNN MODEL
-# ============================================================
+
+# kNN method
 
 DATA_DIR = "data/task1_data"
 SUBMISSION_DIR = "submissions"
-
+# in case dont have the folder
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
-
-# ============================================================
-# 1. Load data
-# ============================================================
-
+# load data
 train_meta = pd.read_csv(f"{DATA_DIR}/train_metadata.csv")
 test_meta = pd.read_csv(f"{DATA_DIR}/test_metadata.csv")
-
 color = pd.read_csv(f"{DATA_DIR}/color_histogram.csv")
 hog = pd.read_csv(f"{DATA_DIR}/hog_pca.csv")
 additional = pd.read_csv(f"{DATA_DIR}/additional_features.csv")
 
 
-# ============================================================
-# 2. Merge features
-# ============================================================
-
+# merge features
 features = color.merge(hog, on="image_id").merge(additional, on="image_id")
-
 train_data = train_meta.merge(features, on="image_id")
 test_data = test_meta.merge(features, on="image_id")
 
 
-# ============================================================
-# 3. Prepare X and y
-# ============================================================
-
+# x for input feature y target label
 X = train_data.drop(columns=["image_id", "image_path", "class_id", "class_name"])
 y = train_data["class_id"]
-
 X_test = test_data.drop(columns=["image_id", "image_path"])
 
 
-# ============================================================
-# 4. Train-validation split
-# ============================================================
-
+# split training data
 X_train, X_val, y_train, y_val = train_test_split(
     X,
     y,
@@ -61,22 +44,14 @@ X_train, X_val, y_train, y_val = train_test_split(
     random_state=42,
     stratify=y
 )
-
-
-# ============================================================
-# 5. Build kNN pipeline
-# ============================================================
-
+# build kNN pipeline
 knn_pipeline = Pipeline([
     ("scaler", StandardScaler()),
     ("model", KNeighborsClassifier())
 ])
 
 
-# ============================================================
-# 6. Grid search for best kNN parameters
-# ============================================================
-
+# grid search for best kNN parameters
 param_grid = {
     "model__n_neighbors": [3, 5, 7, 9, 11, 15],
     "model__weights": ["uniform", "distance"],
@@ -91,59 +66,35 @@ grid = GridSearchCV(
     n_jobs=-1,
     verbose=2
 )
-
-print("\nTraining kNN model with GridSearchCV...")
-
 grid.fit(X_train, y_train)
 
 
-# ============================================================
-# 7. Evaluate best kNN model on validation data
-# ============================================================
 
+# evaluate best kNN model on validation data and get best model
 best_knn = grid.best_estimator_
-
 knn_preds = best_knn.predict(X_val)
 knn_acc = accuracy_score(y_val, knn_preds)
-
-
-# ============================================================
-# 8. Retrain best kNN model on all training data
-# ============================================================
-
-print("\nTraining final kNN model on all training data...")
 
 best_knn.fit(X, y)
 
 
-# ============================================================
-# 9. Predict test data
-# ============================================================
-
+# predict test data
 test_preds = best_knn.predict(X_test)
 
 
-# ============================================================
-# 10. Save submission
-# ============================================================
-
+# save as submission
 submission = pd.DataFrame({
     "image_id": test_data["image_id"],
     "class_id": test_preds
 })
 
-submission_name = f"{SUBMISSION_DIR}/task1_knn_submission.csv"
-
+submission_name = f"{SUBMISSION_DIR}/task1_knn.csv"
 submission.to_csv(submission_name, index=False)
 
 
-# ============================================================
-# 11. Print consistent output
-# ============================================================
-
-print("\n" + "=" * 60)
+# output
+print("\n")
 print("MODEL: kNN")
-print("=" * 60)
 
 print("\nModel details:")
 print("best parameters:", grid.best_params_)
@@ -162,8 +113,4 @@ print(confusion_matrix(y_val, knn_preds))
 
 print("\nSubmission preview:")
 print(submission.head())
-
-print("\nSaved submission to:")
-print(submission_name)
-
-print("=" * 60)
+print("\n")
