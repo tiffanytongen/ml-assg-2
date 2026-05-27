@@ -306,8 +306,4 @@ print(confusion_matrix(y_val, best_val_preds))
 
 print("\nSubmission preview:")
 print(submission.head())
-
-print("\nSaved submission to:")
-print(submission_path)
-
 print("\n")
