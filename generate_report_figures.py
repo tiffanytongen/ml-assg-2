@@ -1,10 +1,3 @@
-"""
-Generate suggested report diagrams for COMP30027 Project 2.
-Run from the folder containing this script:
-    python generate_report_figures.py
-Outputs are saved into ./report_figures/
-"""
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -74,7 +67,7 @@ def save_accuracy_chart(data, title, filename):
 
 def save_confusion_matrix(cm, title, filename):
     plt.figure(figsize=(6.4, 5.6))
-    plt.imshow(cm)
+    plt.imshow(cm, cmap="Blues")
     plt.title(title)
     plt.xlabel("Predicted class")
     plt.ylabel("True class")
