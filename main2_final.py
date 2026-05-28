@@ -23,10 +23,10 @@ warnings.filterwarnings("ignore")
 
 
 # Models:
-# 1. Logistic Regression
-# 2. SVM RBF
-# 3. Random Forest
-# 4. Voting Ensemble
+# Logistic Regression
+# SVM RBF
+# Random Forest
+# Voting Ensemble
 
 DATA_DIR = "data/task2_data"
 SUBMISSION_DIR = "submissions"
